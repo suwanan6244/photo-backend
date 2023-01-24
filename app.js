@@ -25,8 +25,9 @@ mongoose.connect(mongoUrl,{
 
 require("./userDetails");
 
+
 const User = mongoose.model("UserInfo");
-app.post("/register", async(req,res) => {
+app.post("/signup", async(req,res) => {
     const { username, fname, lname, email, password } = req.body;
 
     const encryptedPassword = await bcrypt.hash(password, 10);
@@ -42,6 +43,24 @@ app.post("/register", async(req,res) => {
             lname,
             email,
             password: encryptedPassword,
+        });
+        res.send({ status: "ok" });
+    } catch (error) {
+        res.send({ status: "error" });
+    }
+});
+
+require("./bank");
+
+const Bank = mongoose.model("BankInfo");
+app.post("/bankcreate", async(req,res) => {
+    const { bankname, name, number } = req.body;
+
+    try {
+        await Bank.create({
+            bankname,
+            name,
+            number,
         });
         res.send({ status: "ok" });
     } catch (error) {
@@ -69,7 +88,7 @@ app.post("/register", async(req,res) => {
     res.json({ status:"error", error: "Invalid Password" });
 });*/
 
-app.post("/login", async (req, res) => {
+app.post("/signin", async (req, res) => {
   const { username, password } = req.body;
 
   const user = await User.findOne({ username });
@@ -78,7 +97,7 @@ app.post("/login", async (req, res) => {
   }
   if (await bcrypt.compare(password, user.password)) {
     const token = jwt.sign({ username: user.username }, JWT_SECRET, {
-      expiresIn: 30,
+      expiresIn: "24h",
     });
 
     if (res.status(201)) {
@@ -143,7 +162,7 @@ app.post("/forgot-password", async (req, res) => {
   
       var mailOptions = {
         from: "youremail@gmail.com",
-        to: "noonwonder22@gmail.com",
+        to: email,
         subject: "Password Reset",
         text: link,
       };
@@ -156,7 +175,9 @@ app.post("/forgot-password", async (req, res) => {
         }
       });
       console.log(link);
-    } catch (error) {}
+    } catch (error) {
+      res.send({ status: "error" });
+  }
   });
 
   app.get("/resetpass/:id/:token", async (req, res) => {
