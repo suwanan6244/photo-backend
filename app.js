@@ -68,6 +68,38 @@ app.post("/bankcreate", async(req,res) => {
     }
 });
 
+require("./upload");
+const Upload = mongoose.model("Upload");
+
+// get all images
+app.get("/allimage", async (req, res) => {
+  try {
+    const image = await Upload.find({}).sort({ _id: -1 });
+    res.status(200).json(image);
+  } catch (error) {
+    res.status(404).json({ msg: "Data error" });
+  }
+});
+
+// post image
+app.post("/image", async (req, res) => {
+  try {
+    const { image, title } = req.body;
+    const createImage = {
+      image,
+      title,
+    };
+    if (createImage) {
+      const newImage = await Upload.create(createImage);
+      res.status(201).json(newImage);
+    }
+  } catch (error) {
+    res.status(404).json({ msg: "Invalid Data" });
+  }
+});
+
+
+
 /*app.post("/login", async(req,res) => {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
