@@ -33,10 +33,22 @@ app.post("/signup", async(req,res) => {
     const encryptedPassword = await bcrypt.hash(password, 10);
     try {
         const oldUser = await User.findOne({ username });
+        const oldEmail = await User.findOne({ email });
 
         if(oldUser){
-           return res.json({ status: "User Exists" });
+           return res.json({ status: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" });
         }
+        if(oldEmail){
+          return res.json({ status: "อีเมลล์นี้ถูกใช้แล้ว" });
+       }
+       if (username.length < 3) {
+        return res.json({ status: "Username สั้นเกินไปโปรดกรอกอย่างน้อย 3 ตัวอักษร" });
+      }
+
+      if (password.length < 8) {
+        return res.json({ status: "กรุณากรอก Password ให้ถูกต้อง" });
+      }
+       
         await User.create({
             username,
             fname,
@@ -84,10 +96,13 @@ app.get("/allimage", async (req, res) => {
 // post image
 app.post("/image", async (req, res) => {
   try {
-    const { image, title } = req.body;
+    const { image, title, price, countInStock, description } = req.body;
     const createImage = {
       image,
       title,
+      price,
+      countInStock,
+      description,
     };
     if (createImage) {
       const newImage = await Upload.create(createImage);
@@ -158,7 +173,7 @@ app.post("/userData", async (req, res) => {
   
       const username = user.username;
       User.findOne({ username: username })
-        .then((data) => {
+        .then((data) => {UserDetails
           res.send({ status: "ok", data: data });
         })
         .catch((error) => {
