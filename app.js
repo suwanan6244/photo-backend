@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
-app.use(express.json())
+app.use(express.json());
 const cors = require("cors");
 app.use(cors());
 const bcrypt = require("bcryptjs");
@@ -62,23 +62,7 @@ app.post("/signup", async(req,res) => {
     }
 });
 
-require("./bank");
 
-const Bank = mongoose.model("BankInfo");
-app.post("/bankcreate", async(req,res) => {
-    const { bankname, name, number } = req.body;
-
-    try {
-        await Bank.create({
-            bankname,
-            name,
-            number,
-        });
-        res.send({ status: "ok" });
-    } catch (error) {
-        res.send({ status: "error" });
-    }
-});
 
 require("./upload");
 const Upload = mongoose.model("Upload");
@@ -92,6 +76,19 @@ app.get("/allimage", async (req, res) => {
     res.status(404).json({ msg: "Data error" });
   }
 });
+
+
+app.get("/allimage/:id", async (req, res) => {
+  const { id } = req.params;
+  console.log(req.params);
+  try {
+  const image = await Upload.findOne({ _id: id });
+  res.status(200).json(image);
+} catch (error) {
+  res.status(404).json({ msg: "Data error" });
+}
+});
+
 
 // post image
 app.post("/image", async (req, res) => {
@@ -173,7 +170,7 @@ app.post("/userData", async (req, res) => {
   
       const username = user.username;
       User.findOne({ username: username })
-        .then((data) => {UserDetails
+        .then((data) => {
           res.send({ status: "ok", data: data });
         })
         .catch((error) => {
@@ -290,3 +287,25 @@ app.post("/forgot-password", async (req, res) => {
     }
 
 });*/
+
+const sharp = require("sharp");
+
+
+app.post("/checkWatermark", async (req, res) => {
+  try {
+      if (!req.files || !req.files.file) {
+        res.status(400).send("No file uploaded");
+        return;
+      }
+    const image = sharp(req.files.file.data);
+    const metadata = await image.metadata();
+    if (metadata.hasAlpha) {
+      res.send("Watermark found");
+    } else {
+      res.send("Watermark not found");
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Internal server error");
+  }
+});
