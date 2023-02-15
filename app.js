@@ -78,7 +78,7 @@ app.get("/allimage", async (req, res) => {
 });
 
 
-app.get("/allimage/:id", async (req, res) => {
+/*app.get("/allimage/:id", async (req, res) => {
   const { id } = req.params;
   console.log(req.params);
   try {
@@ -87,7 +87,19 @@ app.get("/allimage/:id", async (req, res) => {
 } catch (error) {
   res.status(404).json({ msg: "Data error" });
 }
+});*/
+
+app.get("/allimage/:id", async (req, res) => {
+  try {
+    const product = await Upload.findById(req.params.id);
+    res.send(product);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Internal server error");
+  }
 });
+
+
 
 
 // post image
@@ -309,3 +321,16 @@ app.post("/checkWatermark", async (req, res) => {
     res.status(500).send("Internal server error");
   }
 });
+
+/*require("./cart");
+const Cart = mongoose.model("Cart");
+
+app.post('/cart', (req, res) => {
+  Upload.findById(req.body.id, (err, upload) => {
+  if (err) return res.status(400).send({error: 'Error adding product to cart'});
+  // Add the product to the cart
+  // Implementation of adding to cart logic is omitted
+  res.send({message: 'Product added to cart successfully'});
+  });
+  });*/
+
