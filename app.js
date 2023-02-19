@@ -25,15 +25,14 @@ mongoose.connect(mongoUrl,{
 
 require("./userDetails");
 
-
-const User = mongoose.model("UserInfo");
+const UserInfo = mongoose.model("UserInfo");
 app.post("/signup", async(req,res) => {
     const { username, fname, lname, email, password } = req.body;
 
     const encryptedPassword = await bcrypt.hash(password, 10);
     try {
-        const oldUser = await User.findOne({ username });
-        const oldEmail = await User.findOne({ email });
+        const oldUser = await UserInfo.findOne({ username });
+        const oldEmail = await UserInfo.findOne({ email });
 
         if(oldUser){
            return res.json({ status: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" });
@@ -49,7 +48,7 @@ app.post("/signup", async(req,res) => {
         return res.json({ status: "กรุณากรอก Password ให้ถูกต้อง" });
       }
        
-        await User.create({
+        await UserInfo.create({
             username,
             fname,
             lname,
@@ -62,7 +61,14 @@ app.post("/signup", async(req,res) => {
     }
 });
 
-
+app.get("/user", async (req, res) => {
+  try {
+    const image = await UserInfo.find({}).sort({ _id: -1 });
+    res.status(200).json(image);
+  } catch (error) {
+    res.status(404).json({ msg: "Data error" });
+  }
+});
 
 require("./upload");
 const Upload = mongoose.model("Upload");
@@ -77,17 +83,6 @@ app.get("/allimage", async (req, res) => {
   }
 });
 
-
-/*app.get("/allimage/:id", async (req, res) => {
-  const { id } = req.params;
-  console.log(req.params);
-  try {
-  const image = await Upload.findOne({ _id: id });
-  res.status(200).json(image);
-} catch (error) {
-  res.status(404).json({ msg: "Data error" });
-}
-});*/
 
 app.get("/allimage/:id", async (req, res) => {
   try {
@@ -122,42 +117,20 @@ app.post("/image", async (req, res) => {
   }
 });
 
-
-
-/*app.post("/login", async(req,res) => {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
-    if(!User){
-        return res.json({ error: "User Not found"});
-    }
-    if(await bcrypt.compare(password, user.password)){
-        const token = jwt.sign({username: user.username}, JWT_SECRET, {
-            expiresIn: "5m",
-        });
-
-        if(res.status(201)){
-            return res.json({ status: "ok", data:token });
-        } else {
-            return res.json({ status: "error" });
-        }
-    }
-    res.json({ status:"error", error: "Invalid Password" });
-});*/
-
 app.post("/signin", async (req, res) => {
   const { username, password } = req.body;
 
-  const user = await User.findOne({ username });
+  const user = await UserInfo.findOne({ username });
   if (!user) {
     return res.json({ status: "ไม่พบผู้ใช้" });
   }
   if (await bcrypt.compare(password, user.password)) {
-    const token = jwt.sign({ username: user.username }, JWT_SECRET, {
+    const token = jwt.sign({ username: user.username, userId: user._id }, JWT_SECRET, {
       expiresIn: "24h",
     });
 
     if (res.status(201)) {
-      return res.json({ status: "ok", data: token });
+      return res.json({ status: "ok", data: token, userId: user._id });
     } else {
       return res.json({ status: "error" });
     }
@@ -196,10 +169,12 @@ app.listen(5000, ()=> {
     console.log("Server Started");
 });
 
+
+
 app.post("/forgot-password", async (req, res) => {
     const { email } = req.body;
     try {
-      const oldUser = await User.findOne({ email });
+      const oldUser = await UserInfo.findOne({ email });
       if (!oldUser) {
         return res.json({ status: "User Not Exists!!" });
       }
@@ -239,7 +214,7 @@ app.post("/forgot-password", async (req, res) => {
   app.get("/resetpass/:id/:token", async (req, res) => {
     const { id, token } = req.params;
     console.log(req.params);
-    const oldUser = await User.findOne({ _id: id });
+    const oldUser = await UserInfo.findOne({ _id: id });
     if (!oldUser) {
       return res.json({ status: "User Not Exists!!" });
     }
@@ -257,7 +232,7 @@ app.post("/forgot-password", async (req, res) => {
     const { id, token } = req.params;
     const { password } = req.body;
   
-    const oldUser = await User.findOne({ _id: id });
+    const oldUser = await UserInfo.findOne({ _id: id });
     if (!oldUser) {
       return res.json({ status: "User Not Exists!!" });
     }
@@ -265,7 +240,7 @@ app.post("/forgot-password", async (req, res) => {
     try {
       const verify = jwt.verify(token, secret);
       const encryptedPassword = await bcrypt.hash(password, 10);
-      await User.updateOne(
+      await UserInfo.updateOne(
         {
           _id: id,
         },
@@ -300,7 +275,7 @@ app.post("/forgot-password", async (req, res) => {
 
 });*/
 
-const sharp = require("sharp");
+/*const sharp = require("sharp");
 
 
 app.post("/checkWatermark", async (req, res) => {
@@ -320,7 +295,7 @@ app.post("/checkWatermark", async (req, res) => {
     console.error(err);
     res.status(500).send("Internal server error");
   }
-});
+});*/
 
 /*require("./cart");
 const Cart = mongoose.model("Cart");
@@ -334,3 +309,194 @@ app.post('/cart', (req, res) => {
   });
   });*/
 
+
+  const watermarking = require('digital-watermarking');
+  const jimp = require('jimp');
+
+  app.get('/watermarked-images', async (req, res) => {
+    try {
+      const watermarkedImages = await Upload.find();
+      res.json(watermarkedImages);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+
+
+  /*app.get("/watermarked-images/:id", async (req, res) => {
+    try {
+      const watermarkedImage = await Upload.findById(req.params.id);
+    const image = watermarkedImage.image;
+    const title = watermarkedImage.title;
+    const price = watermarkedImage.price;
+    const watermarkText = `Title: ${title}, Price: ${price}`;
+
+    // Use the jimp package to add a digital watermark on the image
+    const images = await jimp.read(image);
+    const font = await jimp.loadFont(jimp.FONT_SANS_32_WHITE);
+    const x = 10;
+    const y = 10;
+    images.print(font, x, y, watermarkText);
+    const outputFilePath = `watermarked-${image}`;
+    await images.writeAsync(outputFilePath);
+
+    // Send the watermarked image file to the client
+    res.download(outputFilePath);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});*/
+
+/*app.get('/watermarked-images/:id', async (req, res) => {
+  try {
+    const upload = await Upload.findById(req.params.id);
+    const image = await jimp.read(upload.image);
+    const title = upload.title;
+    const price = upload.price;
+    const watermarkText = `Title: ${title}, Price: ${price}`;
+
+    // Add a digital watermark to the image
+    const font = await jimp.loadFont(jimp.FONT_SANS_16_WHITE);
+    image.print(font, 10, 10, watermarkText, image.bitmap.width - 20, image.bitmap.height - 20);
+    f.opacity(0); // Set the opacity of the watermark to 10%
+    
+    const outputFilePath = `watermarked-${upload.image}`;
+    await image.writeAsync(outputFilePath);
+
+    // Send the watermarked image file to the client
+    res.download(outputFilePath);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});*/
+const stegcloak = require('stegcloak');
+
+/*app.get("/watermarked-images/:id", async (req, res) => {
+  try {
+    const watermarkedImage = await Upload.findById(req.params.id);
+  const image = watermarkedImage.image;
+  const title = watermarkedImage.title;
+  const price = watermarkedImage.price;
+  const watermarkText = `Title: ${title}, Price: ${price}`;
+
+  const images = await jimp.read(image);
+    const font = await jimp.loadFont(jimp.FONT_SANS_32_WHITE);
+    const x = 10;
+    const y = 10;
+    const water = new jimp(image.bitmap.width, image.bitmap.height);
+    water.print(font, x, y, watermarkText);
+    water.opacity(0);
+
+    // Embed the watermark on the image
+    images.composite(water, 0, 0);
+    const outputFilePath = `watermarked-${image}`;
+    await images.writeAsync(outputFilePath);
+
+    // Send the watermarked image file to the client
+    res.download(outputFilePath);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});*/
+
+
+require("./cart");
+const Cart = mongoose.model("Cart");
+
+// Add a product to the cart
+// Add a product to the cart
+// Add a product to the cart
+/*app.post('/cart', async (req, res) => {
+  const { userId, productId, quantity } = req.body;
+
+  try {
+    
+    // Find the user based on the userId
+    const user = await UserInfo.findById(userId);
+
+    // Find the product based on the productId
+    const product = await Upload.findById(productId);
+
+    // Add the product to the cart
+    const cart = new Cart({
+      userId: user._id,
+      productId: product._id,
+      quantity
+    });
+
+    // Save the cart item
+    await cart.save();
+
+    res.status(200).json({ message: 'Product added to cart' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Error adding product to cart' });
+  }
+});*/
+
+
+// Get user's cart
+/*app.get("/cart/:username", async (req, res) => {
+  try {
+    const user = await UserInfo.findOne({ username: req.params.username })
+      .populate("cart.productId")
+      .exec();
+
+    res.status(200).json(user.cart);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error retrieving user's cart" });
+  }
+});*/
+
+app.get('/cart/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Find all cart items for the user
+    const cartItems = await Cart.find({ userId }).populate('productId');
+
+    res.status(200).json({ cartItems });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Error retrieving cart items' });
+  }
+});
+
+app.post('/cart', async (req, res) => {
+  const { userId, productId, quantity } = req.body;
+
+  try {
+    // Find the user based on the userId
+    const user = await UserInfo.findById(userId);
+
+    // Find the cart items for the user
+    const cartItems = await Cart.find({ userId: user._id });
+
+    // Check if the product is already in the cart
+    const cartItem = cartItems.find(item => item.productId.toString() === productId);
+
+    if (cartItem) {
+      // If the product is already in the cart, add the quantity
+      cartItem.quantity += quantity;
+      await cartItem.save();
+    } else {
+      // If the product is not in the cart, create a new cart item
+      const product = await Upload.findById(productId);
+
+      const newCartItem = new Cart({
+        userId: user._id,
+        productId: product._id,
+        quantity
+      });
+
+      await newCartItem.save();
+    }
+
+    res.status(200).json({ message: 'Product added to cart' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Error adding product to cart' });
+  }
+});
