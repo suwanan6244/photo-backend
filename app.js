@@ -258,23 +258,6 @@ app.post("/forgot-password", async (req, res) => {
     }
   });
 
-/*app.post("/post",async(req,res)=>{
-    console.log(req.body);
-    const {data}=req.body;
-    
-    try{
-        if(data == "suwanan"){
-            res.send({status:"ok"});
-
-        } else{
-            res.send({status:"User Not Found"});
-        }
-    }catch(error){
-        res.send({status:"Something went wrong try again"});
-    }
-
-});*/
-
 /*const sharp = require("sharp");
 
 
@@ -297,18 +280,6 @@ app.post("/checkWatermark", async (req, res) => {
   }
 });*/
 
-/*require("./cart");
-const Cart = mongoose.model("Cart");
-
-app.post('/cart', (req, res) => {
-  Upload.findById(req.body.id, (err, upload) => {
-  if (err) return res.status(400).send({error: 'Error adding product to cart'});
-  // Add the product to the cart
-  // Implementation of adding to cart logic is omitted
-  res.send({message: 'Product added to cart successfully'});
-  });
-  });*/
-
 
   const watermarking = require('digital-watermarking');
   const jimp = require('jimp');
@@ -321,7 +292,6 @@ app.post('/cart', (req, res) => {
       res.status(500).json({ message: error.message });
     }
   });
-
 
 
   /*app.get("/watermarked-images/:id", async (req, res) => {
@@ -348,107 +318,8 @@ app.post('/cart', (req, res) => {
   }
 });*/
 
-/*app.get('/watermarked-images/:id', async (req, res) => {
-  try {
-    const upload = await Upload.findById(req.params.id);
-    const image = await jimp.read(upload.image);
-    const title = upload.title;
-    const price = upload.price;
-    const watermarkText = `Title: ${title}, Price: ${price}`;
-
-    // Add a digital watermark to the image
-    const font = await jimp.loadFont(jimp.FONT_SANS_16_WHITE);
-    image.print(font, 10, 10, watermarkText, image.bitmap.width - 20, image.bitmap.height - 20);
-    f.opacity(0); // Set the opacity of the watermark to 10%
-    
-    const outputFilePath = `watermarked-${upload.image}`;
-    await image.writeAsync(outputFilePath);
-
-    // Send the watermarked image file to the client
-    res.download(outputFilePath);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});*/
-const stegcloak = require('stegcloak');
-
-/*app.get("/watermarked-images/:id", async (req, res) => {
-  try {
-    const watermarkedImage = await Upload.findById(req.params.id);
-  const image = watermarkedImage.image;
-  const title = watermarkedImage.title;
-  const price = watermarkedImage.price;
-  const watermarkText = `Title: ${title}, Price: ${price}`;
-
-  const images = await jimp.read(image);
-    const font = await jimp.loadFont(jimp.FONT_SANS_32_WHITE);
-    const x = 10;
-    const y = 10;
-    const water = new jimp(image.bitmap.width, image.bitmap.height);
-    water.print(font, x, y, watermarkText);
-    water.opacity(0);
-
-    // Embed the watermark on the image
-    images.composite(water, 0, 0);
-    const outputFilePath = `watermarked-${image}`;
-    await images.writeAsync(outputFilePath);
-
-    // Send the watermarked image file to the client
-    res.download(outputFilePath);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});*/
-
-
 require("./cart");
 const Cart = mongoose.model("Cart");
-
-// Add a product to the cart
-// Add a product to the cart
-// Add a product to the cart
-/*app.post('/cart', async (req, res) => {
-  const { userId, productId, quantity } = req.body;
-
-  try {
-    
-    // Find the user based on the userId
-    const user = await UserInfo.findById(userId);
-
-    // Find the product based on the productId
-    const product = await Upload.findById(productId);
-
-    // Add the product to the cart
-    const cart = new Cart({
-      userId: user._id,
-      productId: product._id,
-      quantity
-    });
-
-    // Save the cart item
-    await cart.save();
-
-    res.status(200).json({ message: 'Product added to cart' });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Error adding product to cart' });
-  }
-});*/
-
-
-// Get user's cart
-/*app.get("/cart/:username", async (req, res) => {
-  try {
-    const user = await UserInfo.findOne({ username: req.params.username })
-      .populate("cart.productId")
-      .exec();
-
-    res.status(200).json(user.cart);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Error retrieving user's cart" });
-  }
-});*/
 
 app.get('/cart/:userId', async (req, res) => {
   const { userId } = req.params;
@@ -498,5 +369,107 @@ app.post('/cart', async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: 'Error adding product to cart' });
+  }
+});
+
+app.delete('/cart/:userId/:itemId', async (req, res) => {
+  const { userId, itemId } = req.params;
+
+  try {
+    // Find the cart item for the user and item ID
+    const cartItem = await Cart.findOne({ userId, _id: itemId });
+
+    if (!cartItem) {
+      return res.status(404).json({ message: 'Cart item not found' });
+    }
+
+    await cartItem.remove();
+
+    res.status(200).json({ message: 'Cart item deleted successfully' });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Error deleting cart item' });
+  }
+});
+
+const QRCode = require('qrcode')
+
+/*app.get("/watermarked-images/:id", async (req, res) => {
+  try {
+    const upload = await Upload.findById(req.params.id);
+    const { title, price } = upload;
+
+    // generate QR code for title and price information
+    const watermarkText = `Title: ${title}, Price: ${price}`;
+    const qrCode = await QRCode.toDataURL(watermarkText);
+
+    // send QR code image to frontend page
+    res.send(`<img src="${qrCode}" alt="Watermark">`);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error occurred while generating the watermark");
+  }
+});*/
+
+const Jimp = require("jimp");
+
+/*app.get('/extract-watermark/:id', async (req, res) => {
+  try {
+    const upload = await Upload.findById(req.params.id);
+    const { image } = upload;
+
+    // Load the image using Jimp
+    const imageWithWatermark = await Jimp.read(image);
+
+    // Extract the watermark
+    const watermarkImage = imageWithWatermark.clone();
+    watermarkImage.scan(0, 0, watermarkImage.bitmap.width, watermarkImage.bitmap.height, (x, y, idx) => {
+      // Get the LSB of the blue channel
+      const lsb = watermarkImage.bitmap.data[idx + 2] & 1;
+      // Set the pixel color based on the LSB
+      const color = lsb === 1 ? 255 : 0;
+      watermarkImage.setPixelColor(Jimp.rgbaToInt(color, color, color, 255), x, y);
+    });
+
+    // Send the extracted watermark image to the frontend page
+    const extractedWatermarkImage = await watermarkImage.getBufferAsync(Jimp.MIME_JPEG);
+    res.contentType('image/jpeg');
+    res.send(extractedWatermarkImage);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error occurred while extracting the watermark');
+  }
+});*/
+
+
+const multer = require('multer');
+
+// Set up multer to handle file uploads
+const upload = multer({ dest: 'uploads/' });
+
+app.post('/extract-watermark', upload.single('image'), async (req, res) => {
+  try {
+    const { path } = req.file;
+
+    // Load the image using Jimp
+    const imageWithWatermark = await Jimp.read(path);
+
+    // Extract the watermark
+    const watermarkImage = imageWithWatermark.clone();
+    watermarkImage.scan(0, 0, watermarkImage.bitmap.width, watermarkImage.bitmap.height, (x, y, idx) => {
+      // Get the LSB of the blue channel
+      const lsb = watermarkImage.bitmap.data[idx + 2] & 1;
+      // Set the pixel color based on the LSB
+      const color = lsb === 1 ? 255 : 0;
+      watermarkImage.setPixelColor(Jimp.rgbaToInt(color, color, color, 255), x, y);
+    });
+
+    // Send the extracted watermark image to the frontend page
+    const extractedWatermarkImage = await watermarkImage.getBufferAsync(Jimp.MIME_JPEG);
+    res.contentType('image/jpeg');
+    res.send(extractedWatermarkImage);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Error occurred while extracting the watermark');
   }
 });

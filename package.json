@@ -11,7 +11,9 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
+    "dct": "^0.1.0",
     "digital-watermarking": "^1.1.13",
+    "dwt": "^18.1.1",
     "ejs": "^3.1.8",
     "express": "^4.18.2",
     "invisible-watermark": "^1.0.17",
@@ -21,6 +23,7 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.0",
     "nodemon": "^2.0.20",
+    "qrcode": "^1.5.1",
     "sharp": "^0.31.3",
     "steganography": "^0.2.0",
     "stegcloak": "^1.1.1"
