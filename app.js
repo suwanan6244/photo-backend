@@ -559,23 +559,11 @@ app.post("/checkout", async (req, res) => {
       description: `Charge for user ${buyerId}`,
     });
 
-    // Save the cart items to the database
-    const savedItems = await Promise.all(
-      cartItems.map(async (item) => {
-        const savedItem = await Cart.create({
-          buyerId,
-          productId: item._id,
-          quantity: item.quantity,
-        });
-        return savedItem;
-      })
-    );
-
     // Create a new checkout document and save it to the database
     const checkout = new Checkout({
       buyerId,
-      products: savedItems.map((item) => ({
-        productId: item.productId,
+      products: cartItems.map((item) => ({
+        productId: item._id,
         quantity: item.quantity,
       })),
       totalAmount,
@@ -586,13 +574,13 @@ app.post("/checkout", async (req, res) => {
     res.status(200).json({
       msg: "Checkout successful!",
       charge,
-      savedItems,
     });
   } catch (error) {
     console.error(error);
     res.status(400).json({ msg: "Checkout failed: " + error.message });
   }
 });
+
 
 app.get('/checkout/:buyerId', async (req, res) => {
   const { buyerId } = req.params;
@@ -608,4 +596,3 @@ app.get('/checkout/:buyerId', async (req, res) => {
     res.status(500).json({ msg: "Internal server error" });
   }
 });
-
