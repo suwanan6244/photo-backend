@@ -539,3 +539,73 @@ app.post('/extract-watermark', upload.single('image'), async (req, res) => {
     res.status(500).send('Error occurred while extracting the watermark');
   }
 });
+
+
+//stripe 
+const stripe = require("stripe")("sk_test_51MfJMuCa6p7Qb3lSUd1cZ5LrFTMFPDZlRHoWHLFQdLzlkIjUwEMnax6OT7goZLJbzhYAb54mlb7XCw8Br9dmXkiI00p69JCbWQ");
+require("./checkout");
+const Checkout = mongoose.model("Checkout");
+
+
+app.post("/checkout", async (req, res) => {
+  try {
+    const { userId, cartItems, totalAmount, stripeTokenId } = req.body;
+
+    // Create a Stripe charge for the total amount
+    const charge = await stripe.charges.create({
+      amount: totalAmount * 100, // amount in cents
+      currency: "usd",
+      source: stripeTokenId,
+      description: `Charge for user ${userId}`,
+    });
+
+    // Save the cart items to the database
+    const savedItems = await Promise.all(
+      cartItems.map(async (item) => {
+        const savedItem = await Cart.create({
+          userId,
+          productId: item._id,
+          quantity: item.quantity,
+        });
+        return savedItem;
+      })
+    );
+
+    // Create a new checkout document and save it to the database
+    const checkout = new Checkout({
+      userId,
+      products: savedItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+      totalAmount,
+    });
+    await checkout.save();
+
+    // Return a success response to the client
+    res.status(200).json({
+      msg: "Checkout successful!",
+      charge,
+      savedItems,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ msg: "Checkout failed: " + error.message });
+  }
+});
+
+app.get('/checkout/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Find all the checkout documents for the user with the specified userId
+    const checkouts = await Checkout.find({ userId }).populate('products.productId');
+
+    // Return the checkout documents to the client
+    res.status(200).json({ checkouts });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal server error" });
+  }
+});
+
