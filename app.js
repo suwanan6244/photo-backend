@@ -383,12 +383,12 @@ app.post("/checkWatermark", async (req, res) => {
 require("./cart");
 const Cart = mongoose.model("Cart");
 
-app.get('/cart/:userId', async (req, res) => {
-  const { userId } = req.params;
+app.get('/cart/:buyerId', async (req, res) => {
+  const { buyerId } = req.params;
 
   try {
     // Find all cart items for the user
-    const cartItems = await Cart.find({ userId }).populate('productId');
+    const cartItems = await Cart.find({ buyerId }).populate('productId');
 
     res.status(200).json({ cartItems });
   } catch (error) {
@@ -399,14 +399,14 @@ app.get('/cart/:userId', async (req, res) => {
 
 
 app.post('/cart', async (req, res) => {
-  const { userId, productId, quantity } = req.body;
+  const { buyerId, productId, quantity } = req.body;
 
   try {
-    // Find the user based on the userId
-    const user = await UserInfo.findById(userId);
+    // Find the user based on the buyerId
+    const user = await UserInfo.findById(buyerId);
 
     // Find the cart items for the user
-    const cartItems = await Cart.find({ userId: user._id });
+    const cartItems = await Cart.find({ buyerId: user._id });
 
     // Check if the product is already in the cart
     const cartItem = cartItems.find(item => item.productId.toString() === productId);
@@ -419,13 +419,13 @@ app.post('/cart', async (req, res) => {
 
       const product = await Upload.findById(productId);
 
-      if (product.sellerId.toString() === userId) {
-        // If the sellerId of the product matches the userId of the current user, return an error message
+      if (product.sellerId.toString() === buyerId) {
+        // If the sellerId of the product matches the buyerId of the current user, return an error message
         return res.status(400).json({ message: 'You cannot add your own product to the cart' });
       }
 
       const newCartItem = new Cart({
-        userId: user._id,
+        buyerId: user._id,
         productId: product._id,
         quantity
       });
@@ -442,12 +442,12 @@ app.post('/cart', async (req, res) => {
 
 
 
-app.delete('/cart/:userId/:itemId', async (req, res) => {
-  const { userId, itemId } = req.params;
+app.delete('/cart/:buyerId/:itemId', async (req, res) => {
+  const { buyerId, itemId } = req.params;
 
   try {
     // Find the cart item for the user and item ID
-    const cartItem = await Cart.findOne({ userId, _id: itemId });
+    const cartItem = await Cart.findOne({ buyerId, _id: itemId });
 
     if (!cartItem) {
       return res.status(404).json({ message: 'Cart item not found' });
@@ -549,21 +549,21 @@ const Checkout = mongoose.model("Checkout");
 
 app.post("/checkout", async (req, res) => {
   try {
-    const { userId, cartItems, totalAmount, stripeTokenId } = req.body;
+    const { buyerId, cartItems, totalAmount, stripeTokenId } = req.body;
 
     // Create a Stripe charge for the total amount
     const charge = await stripe.charges.create({
       amount: totalAmount * 100, // amount in cents
       currency: "usd",
       source: stripeTokenId,
-      description: `Charge for user ${userId}`,
+      description: `Charge for user ${buyerId}`,
     });
 
     // Save the cart items to the database
     const savedItems = await Promise.all(
       cartItems.map(async (item) => {
         const savedItem = await Cart.create({
-          userId,
+          buyerId,
           productId: item._id,
           quantity: item.quantity,
         });
@@ -573,7 +573,7 @@ app.post("/checkout", async (req, res) => {
 
     // Create a new checkout document and save it to the database
     const checkout = new Checkout({
-      userId,
+      buyerId,
       products: savedItems.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -594,12 +594,12 @@ app.post("/checkout", async (req, res) => {
   }
 });
 
-app.get('/checkout/:userId', async (req, res) => {
-  const { userId } = req.params;
+app.get('/checkout/:buyerId', async (req, res) => {
+  const { buyerId } = req.params;
 
   try {
-    // Find all the checkout documents for the user with the specified userId
-    const checkouts = await Checkout.find({ userId }).populate('products.productId');
+    // Find all the checkout documents for the user with the specified buyerId
+    const checkouts = await Checkout.find({ buyerId }).populate('products.productId');
 
     // Return the checkout documents to the client
     res.status(200).json({ checkouts });
