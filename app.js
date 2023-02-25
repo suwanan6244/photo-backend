@@ -7,6 +7,7 @@ app.use(cors());
 const bcrypt = require("bcryptjs");
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: false }));
+const multer = require('multer');
 
 const jwt = require("jsonwebtoken");
 var nodemailer = require("nodemailer");
@@ -21,6 +22,17 @@ mongoose.connect(mongoUrl,{
     console.log("Connected to database");
 })
 .catch((e) => console.log(e));
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads/')
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + '.' + file.mimetype.split('/')[1])
+  }
+})
+const upload = multer({ storage: storage });
 
 
 require("./userDetails");
@@ -73,6 +85,32 @@ app.get("/user", async (req, res) => {
 require("./upload");
 const Upload = mongoose.model("Upload");
 
+// post image
+app.post('/image', upload.single('image'), async (req, res) => {
+  try {
+    const { title, price, description } = req.body;
+
+    // Get the userId from the request header
+    const userId = req.headers.authorization.split(' ')[1];
+
+    const createImage = {
+      image: req.file.filename,
+      title,
+      price,
+      description,
+      sellerId: userId, // Use the userId to create the sellerId field
+    };
+    if (createImage) {
+      const newImage = await Upload.create(createImage);
+      res.status(201).json(newImage);
+    }
+  } catch (error) {
+    res.status(404).json({ msg: 'Invalid Data' });
+  }
+});
+
+app.use('/uploads', express.static('uploads'));
+
 // get all images
 app.get("/allimage", async (req, res) => {
   try {
@@ -82,6 +120,8 @@ app.get("/allimage", async (req, res) => {
     res.status(404).json({ msg: "Data error" });
   }
 });
+
+
 
 
 app.get("/allimage/:id", async (req, res) => {
@@ -94,28 +134,29 @@ app.get("/allimage/:id", async (req, res) => {
   }
 });
 
-
-
-
-// post image
-app.post("/image", async (req, res) => {
+/*app.get("/image/:sellerId", async (req, res) => {
   try {
-    const { image, title, price, countInStock, description } = req.body;
-    const createImage = {
-      image,
-      title,
-      price,
-      countInStock,
-      description,
-    };
-    if (createImage) {
-      const newImage = await Upload.create(createImage);
-      res.status(201).json(newImage);
-    }
+    const { sellerId } = req.params;
+    const image = await Upload.find({ sellerId }).sort({ _id: -1 });
+    res.status(200).json(image);
   } catch (error) {
-    res.status(404).json({ msg: "Invalid Data" });
+    res.status(404).json({ msg: "Data error" });
+  }
+});*/
+
+app.get("/image/:sellerId", async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+    const image = await Upload.find({ sellerId: sellerId }).sort({ _id: -1 });
+    res.status(200).json(image);
+  } catch (error) {
+    res.status(404).json({ msg: "Data error" });
   }
 });
+
+
+
+
 
 app.post("/signin", async (req, res) => {
   const { username, password } = req.body;
@@ -154,7 +195,7 @@ app.post("/userData", async (req, res) => {
       }
   
       const username = user.username;
-      User.findOne({ username: username })
+      UserInfo.findOne({ username: username })
         .then((data) => {
           res.send({ status: "ok", data: data });
         })
@@ -335,6 +376,7 @@ app.get('/cart/:userId', async (req, res) => {
   }
 });
 
+
 app.post('/cart', async (req, res) => {
   const { userId, productId, quantity } = req.body;
 
@@ -349,12 +391,17 @@ app.post('/cart', async (req, res) => {
     const cartItem = cartItems.find(item => item.productId.toString() === productId);
 
     if (cartItem) {
-      // If the product is already in the cart, add the quantity
-      cartItem.quantity += quantity;
-      await cartItem.save();
+      // If the product is already in the cart, return an error message
+      return res.status(400).json({ message: 'Product already in cart' });
     } else {
       // If the product is not in the cart, create a new cart item
+
       const product = await Upload.findById(productId);
+
+      if (product.sellerId.toString() === userId) {
+        // If the sellerId of the product matches the userId of the current user, return an error message
+        return res.status(400).json({ message: 'You cannot add your own product to the cart' });
+      }
 
       const newCartItem = new Cart({
         userId: user._id,
@@ -371,6 +418,8 @@ app.post('/cart', async (req, res) => {
     res.status(500).json({ message: 'Error adding product to cart' });
   }
 });
+
+
 
 app.delete('/cart/:userId/:itemId', async (req, res) => {
   const { userId, itemId } = req.params;
@@ -442,10 +491,6 @@ const Jimp = require("jimp");
 });*/
 
 
-const multer = require('multer');
-
-// Set up multer to handle file uploads
-const upload = multer({ dest: 'uploads/' });
 
 app.post('/extract-watermark', upload.single('image'), async (req, res) => {
   try {

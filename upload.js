@@ -13,14 +13,15 @@ const UploadSchema = new mongoose.Schema(
         type: Number,
         required: true,
     },
-    countInStock: {
-        type: Number,
-        required: true,
-    },
     description: {
         type: String,
         required: true,
-      },
+    },
+      sellerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'UserInfo',
+        required: true,
+    },
     },{
         collection: "Upload",
     }
