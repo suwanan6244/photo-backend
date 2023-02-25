@@ -134,16 +134,6 @@ app.get("/allimage/:id", async (req, res) => {
   }
 });
 
-/*app.get("/image/:sellerId", async (req, res) => {
-  try {
-    const { sellerId } = req.params;
-    const image = await Upload.find({ sellerId }).sort({ _id: -1 });
-    res.status(200).json(image);
-  } catch (error) {
-    res.status(404).json({ msg: "Data error" });
-  }
-});*/
-
 app.get("/image/:sellerId", async (req, res) => {
   try {
     const { sellerId } = req.params;
@@ -154,7 +144,38 @@ app.get("/image/:sellerId", async (req, res) => {
   }
 });
 
+const fs = require("fs");
 
+app.delete("/image/:id", async (req, res) => {
+  const { id } = req.params;
+  const { sellerId } = req.body;
+
+  try {
+    // Find the image by id and sellerId
+    const image = await Upload.findOne({ _id: id, sellerId });
+
+    if (!image) {
+      // If the image does not exist, return an error message
+      return res.status(404).json({ msg: "Image not found" });
+    }
+
+    // Delete the image
+    await image.remove();
+
+    try {
+      // Delete the image file from the uploads folder
+      fs.unlinkSync(`uploads/${image.image}`);
+    } catch (error) {
+      console.error(error);
+      // If there was an error deleting the file, log the error but still send a successful response
+    }
+
+    res.status(200).json({ msg: "Image deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: "Internal server error" });
+  }
+});
 
 
 
