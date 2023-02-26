@@ -563,7 +563,7 @@ app.post("/checkout", async (req, res) => {
     const checkout = new Checkout({
       buyerId,
       products: cartItems.map((item) => ({
-        productId: item._id,
+        productId: item.productId,
         quantity: item.quantity,
       })),
       totalAmount,
