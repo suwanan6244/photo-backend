@@ -343,43 +343,6 @@ app.post("/checkWatermark", async (req, res) => {
 });*/
 
 
-  const watermarking = require('digital-watermarking');
-  const jimp = require('jimp');
-
-  app.get('/watermarked-images', async (req, res) => {
-    try {
-      const watermarkedImages = await Upload.find();
-      res.json(watermarkedImages);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-
-  /*app.get("/watermarked-images/:id", async (req, res) => {
-    try {
-      const watermarkedImage = await Upload.findById(req.params.id);
-    const image = watermarkedImage.image;
-    const title = watermarkedImage.title;
-    const price = watermarkedImage.price;
-    const watermarkText = `Title: ${title}, Price: ${price}`;
-
-    // Use the jimp package to add a digital watermark on the image
-    const images = await jimp.read(image);
-    const font = await jimp.loadFont(jimp.FONT_SANS_32_WHITE);
-    const x = 10;
-    const y = 10;
-    images.print(font, x, y, watermarkText);
-    const outputFilePath = `watermarked-${image}`;
-    await images.writeAsync(outputFilePath);
-
-    // Send the watermarked image file to the client
-    res.download(outputFilePath);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});*/
-
 require("./cart");
 const Cart = mongoose.model("Cart");
 
@@ -464,54 +427,7 @@ app.delete('/cart/:buyerId/:itemId', async (req, res) => {
 
 const QRCode = require('qrcode')
 
-/*app.get("/watermarked-images/:id", async (req, res) => {
-  try {
-    const upload = await Upload.findById(req.params.id);
-    const { title, price } = upload;
-
-    // generate QR code for title and price information
-    const watermarkText = `Title: ${title}, Price: ${price}`;
-    const qrCode = await QRCode.toDataURL(watermarkText);
-
-    // send QR code image to frontend page
-    res.send(`<img src="${qrCode}" alt="Watermark">`);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Error occurred while generating the watermark");
-  }
-});*/
-
 const Jimp = require("jimp");
-
-/*app.get('/extract-watermark/:id', async (req, res) => {
-  try {
-    const upload = await Upload.findById(req.params.id);
-    const { image } = upload;
-
-    // Load the image using Jimp
-    const imageWithWatermark = await Jimp.read(image);
-
-    // Extract the watermark
-    const watermarkImage = imageWithWatermark.clone();
-    watermarkImage.scan(0, 0, watermarkImage.bitmap.width, watermarkImage.bitmap.height, (x, y, idx) => {
-      // Get the LSB of the blue channel
-      const lsb = watermarkImage.bitmap.data[idx + 2] & 1;
-      // Set the pixel color based on the LSB
-      const color = lsb === 1 ? 255 : 0;
-      watermarkImage.setPixelColor(Jimp.rgbaToInt(color, color, color, 255), x, y);
-    });
-
-    // Send the extracted watermark image to the frontend page
-    const extractedWatermarkImage = await watermarkImage.getBufferAsync(Jimp.MIME_JPEG);
-    res.contentType('image/jpeg');
-    res.send(extractedWatermarkImage);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Error occurred while extracting the watermark');
-  }
-});*/
-
-
 
 app.post('/extract-watermark', upload.single('image'), async (req, res) => {
   try {
@@ -587,8 +503,15 @@ app.get('/checkout/:buyerId', async (req, res) => {
 
   try {
     // Find all the checkout documents for the user with the specified buyerId
-    const checkouts = await Checkout.find({ buyerId }).populate('products.productId');
-
+    const checkouts = await Checkout.find({ buyerId })
+    .populate({
+      path: 'products.productId',
+      populate: {
+        path: 'sellerId',
+        select: 'username',
+      },
+    })
+    .populate('buyerId', 'username');
     // Return the checkout documents to the client
     res.status(200).json({ checkouts });
   } catch (error) {
@@ -596,3 +519,43 @@ app.get('/checkout/:buyerId', async (req, res) => {
     res.status(500).json({ msg: "Internal server error" });
   }
 });
+
+
+
+app.get("/watermarked-images/:id", async (req, res) => {
+  try {
+    const upload = await Upload.findById(req.params.id);
+    const { title, price, image } = upload;
+
+    // generate QR code for title and price information
+    const watermarkText = `Title: ${title}, Price: ${price}`;
+    const qrCode = await QRCode.toDataURL(watermarkText);
+
+    // load the image using Jimp
+    const path = require("path");
+    const imageWithWatermark = await Jimp.read(path.join(__dirname, "uploads", image));
+
+    // load the QR code using Jimp and resize it to a smaller size
+    const qrCodeImage = await Jimp.read(qrCode);
+    qrCodeImage.resize(imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height);
+
+    // embed the QR code into each pixel of the image
+    imageWithWatermark.scan(0, 0, imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height, function (x, y, idx) {
+      const alpha = this.bitmap.data[idx + 3];
+      const qrCodePixel = qrCodeImage.getPixelColor(x, y);
+      const qrCodeAlpha = Jimp.intToRGBA(qrCodePixel).a;
+      const modifiedAlpha = (alpha & ~1) | (qrCodeAlpha & 1);
+      this.bitmap.data[idx + 3] = modifiedAlpha;
+    });
+
+    // send the watermarked image as a download
+    const watermarkedImage = await imageWithWatermark.getBufferAsync(Jimp.MIME_PNG);
+    res.setHeader("Content-disposition", "attachment");
+    res.setHeader("Content-type", "image/png");
+    res.download(watermarkedImage);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error occurred while generating the watermark");
+  }
+});
+
