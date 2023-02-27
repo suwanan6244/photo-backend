@@ -521,6 +521,7 @@ app.get('/checkout/:buyerId', async (req, res) => {
 });
 
 
+const path = require("path");
 
 app.get("/watermarked-images/:id", async (req, res) => {
   try {
@@ -532,11 +533,13 @@ app.get("/watermarked-images/:id", async (req, res) => {
     const qrCode = await QRCode.toDataURL(watermarkText);
 
     // load the image using Jimp
-    const path = require("path");
-    const imageWithWatermark = await Jimp.read(path.join(__dirname, "uploads", image));
+    const imagePath = path.join(__dirname, "uploads", image);
+    const imageBuffer = await fs.promises.readFile(imagePath);
+    const imageWithWatermark = await Jimp.read(imageBuffer);
 
     // load the QR code using Jimp and resize it to a smaller size
-    const qrCodeImage = await Jimp.read(qrCode);
+    const qrCodeBuffer = Buffer.from(qrCode.split(",")[1], "base64");
+    const qrCodeImage = await Jimp.read(qrCodeBuffer);
     qrCodeImage.resize(imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height);
 
     // embed the QR code into each pixel of the image
@@ -548,11 +551,10 @@ app.get("/watermarked-images/:id", async (req, res) => {
       this.bitmap.data[idx + 3] = modifiedAlpha;
     });
 
-    // send the watermarked image as a download
+    // send the watermarked image as a response
     const watermarkedImage = await imageWithWatermark.getBufferAsync(Jimp.MIME_PNG);
-    res.setHeader("Content-disposition", "attachment");
     res.setHeader("Content-type", "image/png");
-    res.download(watermarkedImage);
+    res.send(watermarkedImage);
   } catch (error) {
     console.error(error);
     res.status(500).send("Error occurred while generating the watermark");
