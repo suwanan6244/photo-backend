@@ -684,6 +684,7 @@ app.get("/watermarked-images/:id", async (req, res) => {
   }
 });*/
 
+///////ได้แล้วววววววว
 app.get("/watermarked-images/:id", async (req, res) => {
   try {
     const upload = await Upload.findById(req.params.id);
@@ -700,19 +701,14 @@ app.get("/watermarked-images/:id", async (req, res) => {
 
     // load the QR code using Jimp and resize it to a smaller size
     const qrCodeImage = await Jimp.read(qrCode);
-    qrCodeImage.resize(imageWithWatermark.bitmap.width / 2, imageWithWatermark.bitmap.height / 2);
+    qrCodeImage.resize(imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height);
 
     // embed the QR code into each pixel of the image
-    qrCodeImage.scan(0, 0, qrCodeImage.bitmap.width, qrCodeImage.bitmap.height, function (x, y, idx) {
-      const alpha = this.bitmap.data[idx + 3];
-      const modifiedAlpha = (alpha & ~1) | 1;
-      this.bitmap.data[idx + 3] = modifiedAlpha;
-    });
-
-    imageWithWatermark.composite(qrCodeImage, 0, 0, {
-      mode: Jimp.BLEND_SOURCE_OVER,
-      opacitySource: 1,
-      opacityDest: 1,
+    imageWithWatermark.scan(0, 0, imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height, function (x, y, idx) {
+      // Get the LSB of the watermark's blue channel
+      const lsb = qrCodeImage.bitmap.data[idx + 2] & 1;
+      // Set the LSB of the image's blue channel to match the watermark's LSB
+      imageWithWatermark.bitmap.data[idx + 2] = (imageWithWatermark.bitmap.data[idx + 2] & ~1) | lsb;
     });
 
     // send the watermarked image as a response
@@ -724,5 +720,3 @@ app.get("/watermarked-images/:id", async (req, res) => {
     res.status(500).send("Error occurred while generating the watermark");
   }
 });
-
-
