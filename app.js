@@ -557,11 +557,12 @@ app.get("/watermarked-images/:id", async (req, res) => {
 
     // embed the QR code into each pixel of the image
     imageWithWatermark.scan(0, 0, imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height, function (x, y, idx) {
-      // Get the LSB of the watermark's blue channel
       const lsb = qrCodeImage.bitmap.data[idx + 2] & 1;
-      // Set the LSB of the image's blue channel to match the watermark's LSB 
-      // ตั้งค่า LSB ของช่องสีน้ำเงินของรูปภาพให้ตรงกับ LSB ของลายน้ำ
-      imageWithWatermark.bitmap.data[idx + 2] = (imageWithWatermark.bitmap.data[idx + 2] & ~1) | lsb;
+      if (x === 0 && y === 0) {
+        imageWithWatermark.bitmap.data[idx + 2] = 254;
+      } else {
+        imageWithWatermark.bitmap.data[idx + 2] = (imageWithWatermark.bitmap.data[idx + 2] & ~1) | lsb;
+      }
     });
 
     // send the watermarked image as a response
@@ -620,17 +621,12 @@ const checkAndDeleteImage = async (imageId) => {
 
 const checkImageForWatermark = async (imagePath) => {
   try {
-    // โหลดรูปภาพโดยใช้ Jimp
     const image = await Jimp.read(imagePath);
+    
+    const idx = image.getPixelIndex(0, 0); // get index of pixel at (0,0)
+    const blue = image.bitmap.data[idx + 2]; // get blue channel value
 
-    // ตรวจสอบลายน้ำดิจิตอลฝังอยู่
-    const bluePixels = [];
-    image.scan(0, 0, image.bitmap.width, image.bitmap.height, function (x, y, idx) {
-      const blue = this.bitmap.data[idx + 2];
-      bluePixels.push(blue);
-    });
-
-    const watermarkDetected = bluePixels.some(pixel => pixel === 255 || pixel === 254);
+    const watermarkDetected = blue === 254; // check if blue channel value is 254
 
     return watermarkDetected;
   } catch (error) {
