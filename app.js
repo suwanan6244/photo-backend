@@ -100,8 +100,6 @@ const Upload = mongoose.model("Upload");
 app.post('/image', upload.single('image'), async (req, res) => {
   try {
     const { title, price, description } = req.body;
-
-    // Get the userId from the request header
     const userId = req.headers.authorization.split(' ')[1];
 
     const createImage = {
@@ -109,16 +107,22 @@ app.post('/image', upload.single('image'), async (req, res) => {
       title,
       price,
       description,
-      sellerId: userId, // Use the userId to create the sellerId field
+      sellerId: userId,
     };
+
     if (createImage) {
       const newImage = await Upload.create(createImage);
+      
+      // เรียกใช้ฟังก์ชันเพื่อตรวจสอบและลบรูปภาพที่มีลายน้ำดิจิตอลฝังอยู่
+      checkAndDeleteImage(newImage._id);
+
       res.status(201).json(newImage);
     }
   } catch (error) {
     res.status(404).json({ msg: 'Invalid Data' });
   }
 });
+
 
 app.use('/uploads', express.static('uploads'));
 
@@ -555,7 +559,8 @@ app.get("/watermarked-images/:id", async (req, res) => {
     imageWithWatermark.scan(0, 0, imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height, function (x, y, idx) {
       // Get the LSB of the watermark's blue channel
       const lsb = qrCodeImage.bitmap.data[idx + 2] & 1;
-      // Set the LSB of the image's blue channel to match the watermark's LSB
+      // Set the LSB of the image's blue channel to match the watermark's LSB 
+      // ตั้งค่า LSB ของช่องสีน้ำเงินของรูปภาพให้ตรงกับ LSB ของลายน้ำ
       imageWithWatermark.bitmap.data[idx + 2] = (imageWithWatermark.bitmap.data[idx + 2] & ~1) | lsb;
     });
 
@@ -568,3 +573,68 @@ app.get("/watermarked-images/:id", async (req, res) => {
     res.status(500).send("Error occurred while generating the watermark");
   }
 });
+
+app.post('/check-image', upload.single('image'), async (req, res) => {
+  console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",req.file);
+  try {
+    const { path } = req.file;
+
+    // Load the image using Jimp
+    const image = await Jimp.read(path);
+
+    // Check for the presence of the digital watermark
+    const bluePixels = [];
+    image.scan(0, 0, image.bitmap.width, image.bitmap.height, function (x, y, idx) {
+      const blue = this.bitmap.data[idx + 2];
+      bluePixels.push(blue);
+    });
+
+    const watermarkDetected = bluePixels.some(pixel => pixel === 255 || pixel === 254);
+
+    if (watermarkDetected) {
+      res.status(400).json({ message: 'Image contains a digital watermark' });
+    } else {
+      res.status(200).json({ message: 'Image is valid for upload' });
+    }
+  } catch (error) {
+    console.error('Error occurred while checking the image:', error);
+    res.status(500).send('Error occurred while checking the image');
+  }
+});
+const checkAndDeleteImage = async (imageId) => {
+  try {
+    const image = await Upload.findById(imageId);
+    const watermarkDetected = await checkImageForWatermark(`uploads/${image.image}`);
+
+    if (watermarkDetected) {
+      await Upload.findByIdAndDelete(imageId);
+      await fs.promises.unlink(`uploads/${image.image}`);
+      console.log('Image with watermark detected and deleted:', imageId);
+    } else {
+      console.log('Image without watermark:', imageId);
+    }
+  } catch (error) {
+    console.error('Error occurred while checking and deleting image:', error);
+  }
+};
+
+const checkImageForWatermark = async (imagePath) => {
+  try {
+    // โหลดรูปภาพโดยใช้ Jimp
+    const image = await Jimp.read(imagePath);
+
+    // ตรวจสอบลายน้ำดิจิตอลฝังอยู่
+    const bluePixels = [];
+    image.scan(0, 0, image.bitmap.width, image.bitmap.height, function (x, y, idx) {
+      const blue = this.bitmap.data[idx + 2];
+      bluePixels.push(blue);
+    });
+
+    const watermarkDetected = bluePixels.some(pixel => pixel === 255 || pixel === 254);
+
+    return watermarkDetected;
+  } catch (error) {
+    console.error('Error occurred while checking the image for watermark:', error);
+    return false;
+  }
+};
