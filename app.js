@@ -23,28 +23,28 @@ mongoose.connect(mongoUrl, {
   })
   .catch((e) => console.log(e));
 
-  const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, './uploads/')
-    },
-    filename: function (req, file, cb) {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
-      cb(null, file.fieldname + '-' + uniqueSuffix + '.' + file.mimetype.split('/')[1])
-    }
-  })
-  
-  const fileFilter = (req, file, cb) => {
-    // รับเฉพาะไฟล์ที่เป็น .jpg, .jpeg, และ .png
-    if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
-      return cb(new Error('Only image files are allowed!'), false);
-    }
-    cb(null, true);
-  };
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads/')
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + '.' + file.mimetype.split('/')[1])
+  }
+})
 
-  const upload = multer({ 
-    storage: storage,
-    fileFilter: fileFilter
-  });
+const fileFilter = (req, file, cb) => {
+  // รับเฉพาะไฟล์ที่เป็น .jpg, .jpeg, และ .png
+  if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+    return cb(new Error('Only image files are allowed!'), false);
+  }
+  cb(null, true);
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter
+});
 
 require("./userDetails");
 
@@ -112,7 +112,7 @@ app.post('/image', upload.single('image'), async (req, res) => {
 
     if (createImage) {
       const newImage = await Upload.create(createImage);
-      
+
       // เรียกใช้ฟังก์ชันเพื่อตรวจสอบและลบรูปภาพที่มีลายน้ำดิจิตอลฝังอยู่
       checkAndDeleteImage(newImage._id);
 
@@ -556,14 +556,19 @@ app.get("/watermarked-images/:id", async (req, res) => {
     qrCodeImage.resize(imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height);
 
     // embed the QR code into each pixel of the image
+    const centerX = Math.floor(imageWithWatermark.bitmap.width / 2)
+    const centerY = Math.floor(imageWithWatermark.bitmap.height / 2)
+
+    // embed the QR code into each pixel of the image
     imageWithWatermark.scan(0, 0, imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height, function (x, y, idx) {
-      const lsb = qrCodeImage.bitmap.data[idx + 2] & 1;
-      if (x === 0 && y === 0) {
-        imageWithWatermark.bitmap.data[idx + 2] = 254;
+      const lsb = qrCodeImage.bitmap.data[idx + 2] & 1
+      if (x === centerX && y === centerY) {
+        imageWithWatermark.bitmap.data[idx + 2] = 254
       } else {
         imageWithWatermark.bitmap.data[idx + 2] = (imageWithWatermark.bitmap.data[idx + 2] & ~1) | lsb;
       }
-    });
+    })
+
 
     // send the watermarked image as a response
     const watermarkedImage = await imageWithWatermark.getBufferAsync(Jimp.MIME_PNG);
@@ -575,33 +580,6 @@ app.get("/watermarked-images/:id", async (req, res) => {
   }
 });
 
-app.post('/check-image', upload.single('image'), async (req, res) => {
-  console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",req.file);
-  try {
-    const { path } = req.file;
-
-    // Load the image using Jimp
-    const image = await Jimp.read(path);
-
-    // Check for the presence of the digital watermark
-    const bluePixels = [];
-    image.scan(0, 0, image.bitmap.width, image.bitmap.height, function (x, y, idx) {
-      const blue = this.bitmap.data[idx + 2];
-      bluePixels.push(blue);
-    });
-
-    const watermarkDetected = bluePixels.some(pixel => pixel === 255 || pixel === 254);
-
-    if (watermarkDetected) {
-      res.status(400).json({ message: 'Image contains a digital watermark' });
-    } else {
-      res.status(200).json({ message: 'Image is valid for upload' });
-    }
-  } catch (error) {
-    console.error('Error occurred while checking the image:', error);
-    res.status(500).send('Error occurred while checking the image');
-  }
-});
 const checkAndDeleteImage = async (imageId) => {
   try {
     const image = await Upload.findById(imageId);
@@ -622,11 +600,14 @@ const checkAndDeleteImage = async (imageId) => {
 const checkImageForWatermark = async (imagePath) => {
   try {
     const image = await Jimp.read(imagePath);
-    
-    const idx = image.getPixelIndex(0, 0); // get index of pixel at (0,0)
-    const blue = image.bitmap.data[idx + 2]; // get blue channel value
 
-    const watermarkDetected = blue === 254; // check if blue channel value is 254
+    const centerX = Math.floor(image.bitmap.width / 2);
+    const centerY = Math.floor(image.bitmap.height / 2);
+
+    const idx = image.getPixelIndex(centerX, centerY);
+    const blue = image.bitmap.data[idx + 2];
+
+    const watermarkDetected = blue === 254;
 
     return watermarkDetected;
   } catch (error) {
