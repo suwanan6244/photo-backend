@@ -93,6 +93,14 @@ app.get("/user", async (req, res) => {
   }
 });
 
+app.get("/user/:id", async (req, res) => {
+  try {
+    const seller = await UserInfo.findById(req.params.id);
+    res.status(200).json(seller);
+  } catch (error) {
+    res.status(404).json({ msg: "Seller not found" });
+  }
+});
 require("./upload");
 const Upload = mongoose.model("Upload");
 
@@ -102,24 +110,27 @@ app.post('/image', upload.single('image'), async (req, res) => {
     const { title, price, description } = req.body;
     const userId = req.headers.authorization.split(' ')[1];
 
-    const createImage = {
-      image: req.file.filename,
-      title,
-      price,
-      description,
-      sellerId: userId,
-    };
+    const watermarkDetected = await checkImageForWatermark(`uploads/${req.file.filename}`);
+    
+    if (watermarkDetected) {
+      console.log('Watermark detected, upload aborted');
+      res.status(400).json({ msg: 'Watermark detected, upload aborted' });
+    } else {
+      const createImage = {
+        image: req.file.filename,
+        title,
+        price,
+        description,
+        sellerId: userId,
+      };
 
-    if (createImage) {
-      const newImage = await Upload.create(createImage);
-
-      // เรียกใช้ฟังก์ชันเพื่อตรวจสอบและลบรูปภาพที่มีลายน้ำดิจิตอลฝังอยู่
-      checkAndDeleteImage(newImage._id);
-
-      res.status(201).json(newImage);
+      if (createImage) {
+        const newImage = await Upload.create(createImage);
+        res.status(201).json(newImage);
+      }
     }
   } catch (error) {
-    res.status(404).json({ msg: 'Invalid Data' });
+    res.status(400).json({ msg: error.message });
   }
 });
 
@@ -537,29 +548,23 @@ app.get("/watermarked-images/:id", async (req, res) => {
     const upload = await Upload.findById(req.params.id);
     const { title, price, image, sellerId } = upload;
 
-    // Find the latest checkout record for the product
     const checkout = await Checkout.findOne({ 'products.productId': req.params.id }).sort({ createdAt: -1 }).exec();
     const buyer = await UserInfo.findById(checkout.buyerId);
     const seller = await UserInfo.findById(sellerId);
 
-    // generate QR code for title and price information
-    const watermarkText = `Title: ${title}, Price: ${price}, Buyer: ${buyer.fname} ${buyer.lname}, Seller: ${seller.fname} ${seller.lname}, Date: ${moment(checkout.createdAt).tz('Asia/Bangkok').format('ddd MMM D YYYY HH:mm:ss')}`;
+    const watermarkText = `Title: ${title}, Price: ${price}, Seller: ${seller.fname} ${seller.lname}, Buyer: ${buyer.fname} ${buyer.lname},  Date: ${moment(checkout.createdAt).tz('Asia/Bangkok').format('ddd MMM D YYYY HH:mm:ss')}`;
     const qrCode = qr.imageSync(watermarkText, { type: "png" });
 
-    // load the image using Jimp
     const imagePath = path.join(__dirname, "uploads", image);
     const imageBuffer = await fs.promises.readFile(imagePath);
     const imageWithWatermark = await Jimp.read(imageBuffer);
 
-    // load the QR code using Jimp and resize it to a smaller size
     const qrCodeImage = await Jimp.read(qrCode);
     qrCodeImage.resize(imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height);
 
-    // embed the QR code into each pixel of the image
     const centerX = Math.floor(imageWithWatermark.bitmap.width / 2)
     const centerY = Math.floor(imageWithWatermark.bitmap.height / 2)
 
-    // embed the QR code into each pixel of the image
     imageWithWatermark.scan(0, 0, imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height, function (x, y, idx) {
       const lsb = qrCodeImage.bitmap.data[idx + 2] & 1
       if (x === centerX && y === centerY) {
@@ -570,7 +575,6 @@ app.get("/watermarked-images/:id", async (req, res) => {
     })
 
 
-    // send the watermarked image as a response
     const watermarkedImage = await imageWithWatermark.getBufferAsync(Jimp.MIME_PNG);
     res.setHeader("Content-type", "image/png");
     res.send(watermarkedImage);
