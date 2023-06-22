@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require("mongoose")
 const UploadSchema = new mongoose.Schema(
     {
     title: {
@@ -27,6 +27,6 @@ const UploadSchema = new mongoose.Schema(
     }
     
     
-    );
+    )
 
-mongoose.model("Upload", UploadSchema);
+mongoose.model("Upload", UploadSchema)

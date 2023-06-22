@@ -1,16 +1,16 @@
-const express = require("express");
-const app = express();
-const mongoose = require("mongoose");
-app.use(express.json());
-const cors = require("cors");
-app.use(cors());
-const bcrypt = require("bcryptjs");
-app.set("view engine", "ejs");
-app.use(express.urlencoded({ extended: false }));
-const multer = require('multer');
+const express = require("express")
+const app = express()
+const mongoose = require("mongoose")
+app.use(express.json())
+const cors = require("cors")
+app.use(cors())
+const bcrypt = require("bcryptjs")
+app.set("view engine", "ejs")
+app.use(express.urlencoded({ extended: false }))
+const multer = require('multer')
 
-const jwt = require("jsonwebtoken");
-var nodemailer = require("nodemailer");
+const jwt = require("jsonwebtoken")
+var nodemailer = require("nodemailer")
 
 const JWT_SECRET = "hvdvay6ert72839289()aiyg8t87qt72393293883uhefiuh78ttq3ifi78272jbkj?[]]pou89ywe";
 const mongoUrl = "mongodb+srv://suwanan:suwanan@cluster0.xehmmb3.mongodb.net/?retryWrites=true&w=majority";
@@ -19,9 +19,9 @@ mongoose.connect(mongoUrl, {
   useNewUrlParser: true,
 })
   .then(() => {
-    console.log("Connected to database");
+    console.log("Connected to database")
   })
-  .catch((e) => console.log(e));
+  .catch((e) => console.log(e))
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -36,39 +36,39 @@ const storage = multer.diskStorage({
 const fileFilter = (req, file, cb) => {
   // รับเฉพาะไฟล์ที่เป็น .jpg, .jpeg, และ .png
   if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
-    return cb(new Error('Only image files are allowed!'), false);
+    return cb(new Error('Only image files are allowed!'), false)
   }
-  cb(null, true);
-};
+  cb(null, true)
+}
 
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter
-});
+})
 
-require("./userDetails");
+require("./userDetails")
 
-const UserInfo = mongoose.model("UserInfo");
+const UserInfo = mongoose.model("UserInfo")
 app.post("/signup", async (req, res) => {
-  const { username, fname, lname, email, password } = req.body;
+  const { username, fname, lname, email, password } = req.body
 
-  const encryptedPassword = await bcrypt.hash(password, 10);
+  const encryptedPassword = await bcrypt.hash(password, 10)
   try {
-    const oldUser = await UserInfo.findOne({ username });
-    const oldEmail = await UserInfo.findOne({ email });
+    const oldUser = await UserInfo.findOne({ username })
+    const oldEmail = await UserInfo.findOne({ email })
 
     if (oldUser) {
-      return res.json({ status: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" });
+      return res.json({ status: "ชื่อผู้ใช้นี้ถูกใช้แล้ว" })
     }
     if (oldEmail) {
-      return res.json({ status: "อีเมลล์นี้ถูกใช้แล้ว" });
+      return res.json({ status: "อีเมลล์นี้ถูกใช้แล้ว" })
     }
     if (username.length < 3) {
-      return res.json({ status: "Username สั้นเกินไปโปรดกรอกอย่างน้อย 3 ตัวอักษร" });
+      return res.json({ status: "Username สั้นเกินไปโปรดกรอกอย่างน้อย 3 ตัวอักษร" })
     }
 
     if (password.length < 8) {
-      return res.json({ status: "กรุณากรอก Password ให้ถูกต้อง" });
+      return res.json({ status: "กรุณากรอก Password ให้ถูกต้อง" })
     }
 
     await UserInfo.create({
@@ -77,44 +77,44 @@ app.post("/signup", async (req, res) => {
       lname,
       email,
       password: encryptedPassword,
-    });
-    res.send({ status: "ok" });
+    })
+    res.send({ status: "ok" })
   } catch (error) {
-    res.send({ status: "error" });
+    res.send({ status: "error" })
   }
-});
+})
 
 app.get("/user", async (req, res) => {
   try {
-    const image = await UserInfo.find({}).sort({ _id: -1 });
-    res.status(200).json(image);
+    const image = await UserInfo.find({}).sort({ _id: -1 })
+    res.status(200).json(image)
   } catch (error) {
-    res.status(404).json({ msg: "Data error" });
+    res.status(404).json({ msg: "Data error" })
   }
-});
+})
 
 app.get("/user/:id", async (req, res) => {
   try {
-    const seller = await UserInfo.findById(req.params.id);
-    res.status(200).json(seller);
+    const seller = await UserInfo.findById(req.params.id)
+    res.status(200).json(seller)
   } catch (error) {
-    res.status(404).json({ msg: "Seller not found" });
+    res.status(404).json({ msg: "Seller not found" })
   }
-});
-require("./upload");
-const Upload = mongoose.model("Upload");
+})
+require("./upload")
+const Upload = mongoose.model("Upload")
 
 // post image
 app.post('/image', upload.single('image'), async (req, res) => {
   try {
-    const { title, price, description } = req.body;
-    const userId = req.headers.authorization.split(' ')[1];
+    const { title, price, description } = req.body
+    const userId = req.headers.authorization.split(' ')[1]
 
-    const watermarkDetected = await checkImageForWatermark(`uploads/${req.file.filename}`);
+    const watermarkDetected = await checkImageForWatermark(`uploads/${req.file.filename}`)
     
     if (watermarkDetected) {
-      console.log('Watermark detected, upload aborted');
-      res.status(400).json({ msg: 'Watermark detected, upload aborted' });
+      console.log('Watermark detected, upload aborted')
+      res.status(400).json({ msg: 'Watermark detected, upload aborted' })
     } else {
       const createImage = {
         image: req.file.filename,
@@ -122,209 +122,203 @@ app.post('/image', upload.single('image'), async (req, res) => {
         price,
         description,
         sellerId: userId,
-      };
+      }
 
       if (createImage) {
-        const newImage = await Upload.create(createImage);
-        res.status(201).json(newImage);
+        const newImage = await Upload.create(createImage)
+        res.status(201).json(newImage)
       }
     }
   } catch (error) {
-    res.status(400).json({ msg: error.message });
+    res.status(400).json({ msg: error.message })
   }
-});
+})
 
 
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static('uploads'))
 
 // get all images
 app.get("/allimage", async (req, res) => {
   try {
-    const image = await Upload.find({}).sort({ _id: -1 });
-    res.status(200).json(image);
+    const image = await Upload.find({}).sort({ _id: -1 })
+    res.status(200).json(image)
   } catch (error) {
-    res.status(404).json({ msg: "Data error" });
+    res.status(404).json({ msg: "Data error" })
   }
-});
+})
 
 app.get("/allimage/:id", async (req, res) => {
   try {
-    const product = await Upload.findById(req.params.id);
-    res.send(product);
+    const product = await Upload.findById(req.params.id)
+    res.send(product)
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Internal server error");
+    console.error(err)
+    res.status(500).send("Internal server error")
   }
-});
+})
 
 app.get("/image/:sellerId", async (req, res) => {
   try {
-    const { sellerId } = req.params;
-    const image = await Upload.find({ sellerId: sellerId }).sort({ _id: -1 });
-    res.status(200).json(image);
+    const { sellerId } = req.params
+    const image = await Upload.find({ sellerId: sellerId }).sort({ _id: -1 })
+    res.status(200).json(image)
   } catch (error) {
-    res.status(404).json({ msg: "Data error" });
+    res.status(404).json({ msg: "Data error" })
   }
-});
+})
 
-const fs = require("fs");
+const fs = require("fs")
 
 app.delete("/image/:id", async (req, res) => {
-  const { id } = req.params;
-  const { sellerId } = req.body;
+  const { id } = req.params
+  const { sellerId } = req.body
 
   try {
-    // Find the image by id and sellerId
-    const image = await Upload.findOne({ _id: id, sellerId });
+    const image = await Upload.findOne({ _id: id, sellerId })
 
     if (!image) {
-      // If the image does not exist, return an error message
-      return res.status(404).json({ msg: "Image not found" });
+      return res.status(404).json({ msg: "Image not found" })
     }
 
-    // Delete the image
-    await image.remove();
+    await image.remove()
 
     try {
-      // Delete the image file from the uploads folder
-      fs.unlinkSync(`uploads/${image.image}`);
+      fs.unlinkSync(`uploads/${image.image}`)
     } catch (error) {
-      console.error(error);
-      // If there was an error deleting the file, log the error but still send a successful response
+      console.error(error)
     }
 
-    res.status(200).json({ msg: "Image deleted successfully" });
+    res.status(200).json({ msg: "Image deleted successfully" })
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: "Internal server error" });
+    console.error(error)
+    res.status(500).json({ msg: "Internal server error" })
   }
-});
-
+})
 
 
 app.post("/signin", async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body
 
-  const user = await UserInfo.findOne({ username });
+  const user = await UserInfo.findOne({ username })
   if (!user) {
-    return res.json({ status: "ไม่พบผู้ใช้" });
+    return res.json({ status: "ไม่พบผู้ใช้" })
   }
   if (await bcrypt.compare(password, user.password)) {
     const token = jwt.sign({ username: user.username, userId: user._id }, JWT_SECRET, {
       expiresIn: "24h",
-    });
+    })
 
     if (res.status(201)) {
-      return res.json({ status: "ok", data: token, userId: user._id });
+      return res.json({ status: "ok", data: token, userId: user._id })
     } else {
-      return res.json({ status: "error" });
+      return res.json({ status: "error" })
     }
   }
-  res.json({ status: "รหัสผ่านไม่ถูกต้อง" });
-});
+  res.json({ status: "รหัสผ่านไม่ถูกต้อง" })
+})
 
 
 app.post("/userData", async (req, res) => {
-  const { token } = req.body;
+  const { token } = req.body
   try {
     const user = jwt.verify(token, JWT_SECRET, (err, res) => {
       if (err) {
-        return "token expired";
+        return "token expired"
       }
-      return res;
-    });
-    console.log(user);
+      return res
+    })
+    console.log(user)
     if (user == "token expired") {
-      return res.send({ status: "error", data: "token expired" });
+      return res.send({ status: "error", data: "token expired" })
     }
 
-    const username = user.username;
+    const username = user.username
     UserInfo.findOne({ username: username })
       .then((data) => {
-        res.send({ status: "ok", data: data });
+        res.send({ status: "ok", data: data })
       })
       .catch((error) => {
-        res.send({ status: "error", data: error });
-      });
+        res.send({ status: "error", data: error })
+      })
   } catch (error) { }
-});
+})
 
 
 app.listen(5000, () => {
-  console.log("Server Started");
-});
+  console.log("Server Started")
+})
 
 
 
 app.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
+  const { email } = req.body
   try {
-    const oldUser = await UserInfo.findOne({ email });
+    const oldUser = await UserInfo.findOne({ email })
     if (!oldUser) {
-      return res.json({ status: "User Not Exists!!" });
+      return res.json({ status: "User Not Exists!!" })
     }
-    const secret = JWT_SECRET + oldUser.password;
+    const secret = JWT_SECRET + oldUser.password
     const token = jwt.sign({ email: oldUser.email, id: oldUser._id }, secret, {
       expiresIn: "5m",
-    });
-    const link = `http://localhost:5000/resetpass/${oldUser._id}/${token}`;
+    })
+    const link = `http://localhost:5000/resetpass/${oldUser._id}/${token}`
     var transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
         user: "suwanan6244@gmail.com",
         pass: "eqzxqyovdupjmojx",
       },
-    });
+    })
 
     var mailOptions = {
       from: "youremail@gmail.com",
       to: email,
       subject: "Password Reset",
       text: link,
-    };
+    }
 
     transporter.sendMail(mailOptions, function (error, info) {
       if (error) {
-        console.log(error);
+        console.log(error)
       } else {
-        console.log("Email sent: " + info.response);
+        console.log("Email sent: " + info.response)
       }
-    });
-    console.log(link);
+    })
+    console.log(link)
   } catch (error) {
-    res.send({ status: "error" });
+    res.send({ status: "error" })
   }
-});
+})
 
 app.get("/resetpass/:id/:token", async (req, res) => {
-  const { id, token } = req.params;
-  console.log(req.params);
-  const oldUser = await UserInfo.findOne({ _id: id });
+  const { id, token } = req.params
+  console.log(req.params)
+  const oldUser = await UserInfo.findOne({ _id: id })
   if (!oldUser) {
-    return res.json({ status: "User Not Exists!!" });
+    return res.json({ status: "User Not Exists!!" })
   }
-  const secret = JWT_SECRET + oldUser.password;
+  const secret = JWT_SECRET + oldUser.password
   try {
-    const verify = jwt.verify(token, secret);
-    res.render("index", { email: verify.email, status: "Not Verified" });
+    const verify = jwt.verify(token, secret)
+    res.render("index", { email: verify.email, status: "Not Verified" })
   } catch (error) {
-    console.log(error);
-    res.send("Not Verified");
+    console.log(error)
+    res.send("Not Verified")
   }
-});
+})
 
 app.post("/resetpass/:id/:token", async (req, res) => {
-  const { id, token } = req.params;
-  const { password } = req.body;
+  const { id, token } = req.params
+  const { password } = req.body
 
-  const oldUser = await UserInfo.findOne({ _id: id });
+  const oldUser = await UserInfo.findOne({ _id: id })
   if (!oldUser) {
-    return res.json({ status: "User Not Exists!!" });
+    return res.json({ status: "User Not Exists!!" })
   }
-  const secret = JWT_SECRET + oldUser.password;
+  const secret = JWT_SECRET + oldUser.password
   try {
-    const verify = jwt.verify(token, secret);
-    const encryptedPassword = await bcrypt.hash(password, 10);
+    const verify = jwt.verify(token, secret)
+    const encryptedPassword = await bcrypt.hash(password, 10)
     await UserInfo.updateOne(
       {
         _id: id,
@@ -334,152 +328,137 @@ app.post("/resetpass/:id/:token", async (req, res) => {
           password: encryptedPassword,
         },
       }
-    );
+    )
 
-    res.render("index", { email: verify.email, status: "verified" });
+    res.render("index", { email: verify.email, status: "verified" })
   } catch (error) {
-    console.log(error);
-    res.json({ status: "Something Went Wrong" });
+    console.log(error)
+    res.json({ status: "Something Went Wrong" })
   }
-});
+})
 
 
 
-require("./cart");
-const Cart = mongoose.model("Cart");
+require("./cart")
+const Cart = mongoose.model("Cart")
 
 app.get('/cart/:buyerId', async (req, res) => {
-  const { buyerId } = req.params;
+  const { buyerId } = req.params
 
   try {
-    // Find all cart items for the user
-    const cartItems = await Cart.find({ buyerId }).populate('productId');
+    const cartItems = await Cart.find({ buyerId }).populate('productId')
 
-    res.status(200).json({ cartItems });
+    res.status(200).json({ cartItems })
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Error retrieving cart items' });
+    console.log(error)
+    res.status(500).json({ message: 'Error retrieving cart items' })
   }
-});
+})
 
 
 app.post('/cart', async (req, res) => {
-  const { buyerId, productId, quantity } = req.body;
+  const { buyerId, productId, quantity } = req.body
 
   try {
-    // Find the user based on the buyerId
-    const user = await UserInfo.findById(buyerId);
+    const user = await UserInfo.findById(buyerId)
 
-    // Find the cart items for the user
-    const cartItems = await Cart.find({ buyerId: user._id });
+    const cartItems = await Cart.find({ buyerId: user._id })
 
-    // Check if the product is already in the cart
-    const cartItem = cartItems.find(item => item.productId.toString() === productId);
+    const cartItem = cartItems.find(item => item.productId.toString() === productId)
 
     if (cartItem) {
-      // If the product is already in the cart, return an error message
-      return res.status(400).json({ message: 'Product already in cart' });
+      return res.status(400).json({ message: 'Product already in cart' })
     } else {
-      // If the product is not in the cart, create a new cart item
-
-      const product = await Upload.findById(productId);
-
+      const product = await Upload.findById(productId)
       if (product.sellerId.toString() === buyerId) {
-        // If the sellerId of the product matches the buyerId of the current user, return an error message
-        return res.status(400).json({ message: 'You cannot add your own product to the cart' });
+        return res.status(400).json({ message: 'You cannot add your own product to the cart' })
       }
 
       const newCartItem = new Cart({
         buyerId: user._id,
         productId: product._id,
         quantity
-      });
+      })
 
-      await newCartItem.save();
+      await newCartItem.save()
     }
 
-    res.status(200).json({ message: 'Product added to cart' });
+    res.status(200).json({ message: 'Product added to cart' })
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Error adding product to cart' });
+    console.log(error)
+    res.status(500).json({ message: 'Error adding product to cart' })
   }
-});
+})
 
 app.delete('/cart/:buyerId', async (req, res) => {
-  const { buyerId } = req.params;
+  const { buyerId } = req.params
 
   try {
-    // Find and delete all cart items for the user
-    await Cart.deleteMany({ buyerId });
+    await Cart.deleteMany({ buyerId })
 
-    res.status(200).json({ message: 'User cart cleared successfully' });
+    res.status(200).json({ message: 'User cart cleared successfully' })
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Error clearing user cart' });
+    console.log(error)
+    res.status(500).json({ message: 'Error clearing user cart' })
   }
-});
+})
 
 
 
 app.delete('/cart/:buyerId/:itemId', async (req, res) => {
-  const { buyerId, itemId } = req.params;
+  const { buyerId, itemId } = req.params
 
   try {
-    // Find the cart item for the user and item ID
-    const cartItem = await Cart.findOne({ buyerId, _id: itemId });
+    const cartItem = await Cart.findOne({ buyerId, _id: itemId })
 
     if (!cartItem) {
-      return res.status(404).json({ message: 'Cart item not found' });
+      return res.status(404).json({ message: 'Cart item not found' })
     }
 
-    await cartItem.remove();
+    await cartItem.remove()
 
-    res.status(200).json({ message: 'Cart item deleted successfully' });
+    res.status(200).json({ message: 'Cart item deleted successfully' })
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Error deleting cart item' });
+    console.log(error)
+    res.status(500).json({ message: 'Error deleting cart item' })
   }
-});
+})
 
 const QRCode = require('qrcode')
 
-const Jimp = require("jimp");
+const Jimp = require("jimp")
 
 app.post('/extract-watermark', upload.single('image'), async (req, res) => {
   try {
-    const { path } = req.file;
+    const { path } = req.file
 
-    // Load the image using Jimp
-    const imageWithWatermark = await Jimp.read(path);
+    const imageWithWatermark = await Jimp.read(path)
 
-    // Extract the watermark
-    const watermarkImage = imageWithWatermark.clone();
+    const watermarkImage = imageWithWatermark.clone()
     watermarkImage.scan(0, 0, watermarkImage.bitmap.width, watermarkImage.bitmap.height, (x, y, idx) => {
-      // Get the LSB of the blue channel
-      const lsb = watermarkImage.bitmap.data[idx + 2] & 1;
-      // Set the pixel color based on the LSB
-      const color = lsb === 1 ? 255 : 0;
-      watermarkImage.setPixelColor(Jimp.rgbaToInt(color, color, color, 255), x, y);
-    });
+      const lsb = watermarkImage.bitmap.data[idx + 2] & 1
+      const color = lsb === 1 ? 255 : 0
+      watermarkImage.setPixelColor(Jimp.rgbaToInt(color, color, color, 255), x, y)
+    })
 
-    // Send the extracted watermark image to the frontend page
-    const extractedWatermarkImage = await watermarkImage.getBufferAsync(Jimp.MIME_JPEG);
-    res.contentType('image/jpeg');
-    res.send(extractedWatermarkImage);
+    const extractedWatermarkImage = await watermarkImage.getBufferAsync(Jimp.MIME_JPEG)
+    res.contentType('image/jpeg')
+    res.send(extractedWatermarkImage)
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Error occurred while extracting the watermark');
+    console.error(error)
+    res.status(500).send('Error occurred while extracting the watermark')
   }
-});
+})
 
 
 //stripe 
 const stripe = require("stripe")("sk_test_51MfJMuCa6p7Qb3lSUd1cZ5LrFTMFPDZlRHoWHLFQdLzlkIjUwEMnax6OT7goZLJbzhYAb54mlb7XCw8Br9dmXkiI00p69JCbWQ");
-require("./checkout");
-const Checkout = mongoose.model("Checkout");
+require("./checkout")
+const Checkout = mongoose.model("Checkout")
 
-
-app.post("/checkout", async (req, res) => {
+require("./dataqrcode")
+const DataQRcode = mongoose.model("DataQRcode")
+/*app.post("/checkout", async (req, res) => {
   try {
     const { buyerId, cartItems, totalAmount, stripeTokenId } = req.body;
 
@@ -502,6 +481,27 @@ app.post("/checkout", async (req, res) => {
     });
     await checkout.save();
 
+    // Fetch additional data and create a new document in the DataQRcode collection
+    const buyer = await UserInfo.findById(buyerId);
+    for(const item of cartItems) {
+      const product = await Upload.findById(item.productId);
+      const seller = await UserInfo.findById(product.sellerId);
+      const dataQRcode = new DataQRcode({
+        title: product.title,
+        image: product.image, // Add the image from the product to the DataQRcode document
+        price: product.price,
+        seller: {
+          fname: seller.fname,
+          lname: seller.lname
+        },
+        buyer: {
+          fname: buyer.fname,
+          lname: buyer.lname
+        },
+      });
+      await dataQRcode.save();
+    }
+
     // Return a success response to the client
     res.status(200).json({
       msg: "Checkout successful!",
@@ -512,13 +512,43 @@ app.post("/checkout", async (req, res) => {
     res.status(400).json({ msg: "Checkout failed: " + error.message });
   }
 });
+*/
 
+app.post("/checkout", async (req, res) => {
+  try {
+    const { buyerId, cartItems, totalAmount, stripeTokenId } = req.body
+
+    const charge = await stripe.charges.create({
+      amount: totalAmount * 100, 
+      currency: "usd",
+      source: stripeTokenId,
+      description: `Charge for user ${buyerId}`,
+    })
+
+    const checkout = new Checkout({
+      buyerId,
+      products: cartItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+      totalAmount,
+    })
+    await checkout.save()
+
+    res.status(200).json({
+      msg: "Checkout successful!",
+      charge,
+    })
+  } catch (error) {
+    console.error(error)
+    res.status(400).json({ msg: "Checkout failed: " + error.message })
+  }
+})
 
 app.get('/checkout/:buyerId', async (req, res) => {
-  const { buyerId } = req.params;
+  const { buyerId } = req.params
 
   try {
-    // Find all the checkout documents for the user with the specified buyerId
     const checkouts = await Checkout.find({ buyerId })
       .populate({
         path: 'products.productId',
@@ -527,40 +557,38 @@ app.get('/checkout/:buyerId', async (req, res) => {
           select: 'username',
         },
       })
-      .populate('buyerId', 'username');
-    // Return the checkout documents to the client
-    res.status(200).json({ checkouts });
+      .populate('buyerId', 'username')
+    res.status(200).json({ checkouts })
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ msg: "Internal server error" });
+    console.error(error)
+    res.status(500).json({ msg: "Internal server error" })
   }
-});
+})
 
 
-const path = require("path");
-const qr = require("qr-image");
-const moment = require('moment-timezone');
+const path = require("path")
+const qr = require("qr-image")
+const moment = require('moment-timezone')
 
 
-///////ได้แล้วววววววว
 app.get("/watermarked-images/:id", async (req, res) => {
   try {
-    const upload = await Upload.findById(req.params.id);
-    const { title, price, image, sellerId } = upload;
+    const upload = await Upload.findById(req.params.id)
+    const { title, price, image, sellerId } = upload
 
-    const checkout = await Checkout.findOne({ 'products.productId': req.params.id }).sort({ createdAt: -1 }).exec();
-    const buyer = await UserInfo.findById(checkout.buyerId);
-    const seller = await UserInfo.findById(sellerId);
+    const checkout = await Checkout.findOne({ 'products.productId': req.params.id }).sort({ createdAt: -1 }).exec()
+    const buyer = await UserInfo.findById(checkout.buyerId)
+    const seller = await UserInfo.findById(sellerId)
 
-    const watermarkText = `Title: ${title}, Price: ${price}, Seller: ${seller.fname} ${seller.lname}, Buyer: ${buyer.fname} ${buyer.lname},  Date: ${moment(checkout.createdAt).tz('Asia/Bangkok').format('ddd MMM D YYYY HH:mm:ss')}`;
-    const qrCode = qr.imageSync(watermarkText, { type: "png" });
+    const watermarkText = `Title: ${title}, Price: ${price}, Seller: ${seller.fname} ${seller.lname}, Buyer: ${buyer.fname} ${buyer.lname},  Date: ${moment(checkout.createdAt).tz('Asia/Bangkok').format('ddd MMM D YYYY HH:mm:ss')}`
+    const qrCode = qr.imageSync(watermarkText, { type: "png" })
 
-    const imagePath = path.join(__dirname, "uploads", image);
-    const imageBuffer = await fs.promises.readFile(imagePath);
-    const imageWithWatermark = await Jimp.read(imageBuffer);
+    const imagePath = path.join(__dirname, "uploads", image)
+    const imageBuffer = await fs.promises.readFile(imagePath)
+    const imageWithWatermark = await Jimp.read(imageBuffer)
 
-    const qrCodeImage = await Jimp.read(qrCode);
-    qrCodeImage.resize(imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height);
+    const qrCodeImage = await Jimp.read(qrCode)
+    qrCodeImage.resize(imageWithWatermark.bitmap.width, imageWithWatermark.bitmap.height)
 
     const centerX = Math.floor(imageWithWatermark.bitmap.width / 2)
     const centerY = Math.floor(imageWithWatermark.bitmap.height / 2)
@@ -570,52 +598,54 @@ app.get("/watermarked-images/:id", async (req, res) => {
       if (x === centerX && y === centerY) {
         imageWithWatermark.bitmap.data[idx + 2] = 254
       } else {
-        imageWithWatermark.bitmap.data[idx + 2] = (imageWithWatermark.bitmap.data[idx + 2] & ~1) | lsb;
+        imageWithWatermark.bitmap.data[idx + 2] = (imageWithWatermark.bitmap.data[idx + 2] & ~1) | lsb
       }
     })
 
 
-    const watermarkedImage = await imageWithWatermark.getBufferAsync(Jimp.MIME_PNG);
-    res.setHeader("Content-type", "image/png");
-    res.send(watermarkedImage);
+    const watermarkedImage = await imageWithWatermark.getBufferAsync(Jimp.MIME_PNG)
+    res.setHeader("Content-type", "image/png")
+    res.send(watermarkedImage)
   } catch (error) {
-    console.error(error);
-    res.status(500).send("Error occurred while generating the watermark");
+    console.error(error)
+    res.status(500).send("Error occurred while generating the watermark")
   }
-});
+})
 
 const checkAndDeleteImage = async (imageId) => {
   try {
-    const image = await Upload.findById(imageId);
-    const watermarkDetected = await checkImageForWatermark(`uploads/${image.image}`);
+    const image = await Upload.findById(imageId)
+    const watermarkDetected = await checkImageForWatermark(`uploads/${image.image}`)
 
     if (watermarkDetected) {
-      await Upload.findByIdAndDelete(imageId);
-      await fs.promises.unlink(`uploads/${image.image}`);
-      console.log('Image with watermark detected and deleted:', imageId);
+      await Upload.findByIdAndDelete(imageId)
+      await fs.promises.unlink(`uploads/${image.image}`)
+      console.log('Image with watermark detected and deleted:', imageId)
     } else {
-      console.log('Image without watermark:', imageId);
+      console.log('Image without watermark:', imageId)
     }
   } catch (error) {
-    console.error('Error occurred while checking and deleting image:', error);
+    console.error('Error occurred while checking and deleting image:', error)
   }
-};
+}
 
 const checkImageForWatermark = async (imagePath) => {
   try {
-    const image = await Jimp.read(imagePath);
+    const image = await Jimp.read(imagePath)
 
-    const centerX = Math.floor(image.bitmap.width / 2);
-    const centerY = Math.floor(image.bitmap.height / 2);
+    const centerX = Math.floor(image.bitmap.width / 2)
+    const centerY = Math.floor(image.bitmap.height / 2)
 
-    const idx = image.getPixelIndex(centerX, centerY);
-    const blue = image.bitmap.data[idx + 2];
+    const idx = image.getPixelIndex(centerX, centerY)
+    const blue = image.bitmap.data[idx + 2]
 
-    const watermarkDetected = blue === 254;
+    const watermarkDetected = blue === 254
 
-    return watermarkDetected;
+    return watermarkDetected
   } catch (error) {
-    console.error('Error occurred while checking the image for watermark:', error);
-    return false;
+    console.error('Error occurred while checking the image for watermark:', error)
+    return false
   }
-};
+}
+
+

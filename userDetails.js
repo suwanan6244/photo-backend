@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require("mongoose")
 const UserDetailsSchema = new mongoose.Schema(
     {
         username: { type:String, unique: true },
@@ -10,6 +10,6 @@ const UserDetailsSchema = new mongoose.Schema(
     {
         collection: "UserInfo",
     }
-);
+)
 
-mongoose.model("UserInfo", UserDetailsSchema);
+mongoose.model("UserInfo", UserDetailsSchema)

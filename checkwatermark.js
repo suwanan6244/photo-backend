@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require("mongoose")
 const CheckwatermarkSchema = new mongoose.Schema(
     {
     image: {
@@ -13,4 +13,4 @@ const CheckwatermarkSchema = new mongoose.Schema(
     
     );
 
-mongoose.model("Checkwatermark", CheckwatermarkSchema);
+mongoose.model("Checkwatermark", CheckwatermarkSchema)

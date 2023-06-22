@@ -1,6 +1,6 @@
-const mongoose = require("mongoose");
-const moment = require('moment-timezone');
-const BangkokTime = moment.tz(Date.now(), "Asia/Bangkok").format('YYYY-MM-DD HH:mm:ss');
+const mongoose = require("mongoose")
+const moment = require('moment-timezone')
+const BangkokTime = moment.tz(Date.now(), "Asia/Bangkok").format('YYYY-MM-DD HH:mm:ss')
 
 const CheckoutSchema = new mongoose.Schema(
     {
@@ -33,6 +33,6 @@ const CheckoutSchema = new mongoose.Schema(
         },
     },{
         collection: "Checkout",
-    });
+    })
 
-mongoose.model("Checkout", CheckoutSchema);
+mongoose.model("Checkout", CheckoutSchema)

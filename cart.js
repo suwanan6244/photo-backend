@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require("mongoose")
 const CartSchema = new mongoose.Schema(
   {
     buyerId: {
@@ -17,6 +17,6 @@ const CartSchema = new mongoose.Schema(
       }
   },{
     collection: "Cart",
-});
+})
   
-mongoose.model("Cart", CartSchema);
+mongoose.model("Cart", CartSchema)
